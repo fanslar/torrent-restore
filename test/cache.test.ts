@@ -20,6 +20,31 @@ afterEach(async () => {
 })
 
 describe('torrent cache', () => {
+  it('initializes an empty cache and can store data without deadlocking', async () => {
+    testCacheHome = await fs.mkdtemp(path.join(os.tmpdir(), 'torrent-restore-cache-'))
+    process.env.XDG_CACHE_HOME = testCacheHome
+
+    const cache = new TorrentCache()
+    const key = `magnet:${'c'.repeat(40)}`
+    const data = {
+      data: { name: 'first-use', files: [] },
+      _cachedAt: new Date().toISOString(),
+      _source: key,
+    }
+
+    await expect(cache.set(key, data)).resolves.toBeUndefined()
+    await expect(cache.get(key)).resolves.toEqual(data)
+  })
+
+  it('clears a newly initialized empty cache without deadlocking', async () => {
+    testCacheHome = await fs.mkdtemp(path.join(os.tmpdir(), 'torrent-restore-cache-'))
+    process.env.XDG_CACHE_HOME = testCacheHome
+
+    const cache = new TorrentCache()
+    await expect(cache.clear()).resolves.toBeUndefined()
+    await expect(cache.getStats()).resolves.toMatchObject({ count: 0 })
+  })
+
   it('stores magnet cache files with platform-safe names', async () => {
     testCacheHome = await fs.mkdtemp(path.join(os.tmpdir(), 'torrent-restore-cache-'))
     process.env.XDG_CACHE_HOME = testCacheHome

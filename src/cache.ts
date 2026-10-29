@@ -51,8 +51,9 @@ export class TorrentCache {
           this.meta = data
         }
         else {
-          await this.clear()
+          await this.clearCacheFiles()
           this.meta = { version: CACHE_VERSION, items: {} }
+          await this.saveMeta()
         }
       }
       catch (err) {
@@ -143,6 +144,13 @@ export class TorrentCache {
   async clear(): Promise<void> {
     await this.init()
 
+    await this.clearCacheFiles()
+
+    this.meta.items = {}
+    await this.saveMeta()
+  }
+
+  private async clearCacheFiles(): Promise<void> {
     try {
       const files = await fs.readdir(this.cacheDir)
       for (const file of files) {
@@ -152,9 +160,6 @@ export class TorrentCache {
     catch {
       // ignore
     }
-
-    this.meta.items = {}
-    await this.saveMeta()
   }
 
   /**
