@@ -63,25 +63,22 @@ export function matchUniqueFiles(
       continue
     }
 
-    const match = available[0]
-    if (match.size === torrentFile.size) {
-      matched.push({
-        torrent: torrentFile,
-        local: match,
+    const match = available.find(file => file.size === torrentFile.size)
+    if (!match) {
+      unmatched.push({
+        ...torrentFile,
         stage: 1,
-        type: 'unique_exact',
+        reason: `文件大小不匹配 (期望: ${torrentFile.size}，实际: ${available[0].size})`,
       })
+      continue
     }
-    else {
-      matched.push({
-        torrent: torrentFile,
-        local: match,
-        stage: 1,
-        type: 'unique_size_mismatch',
-        expectedSize: torrentFile.size,
-        actualSize: match.size,
-      })
-    }
+
+    matched.push({
+      torrent: torrentFile,
+      local: match,
+      stage: 1,
+      type: 'unique_exact',
+    })
     usedLocalNames.add(match.fullPath)
     usedLocalSizes.add(match.size)
   }
