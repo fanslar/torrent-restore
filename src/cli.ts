@@ -6,6 +6,14 @@ import type { CliOptions, InputSource } from './types.js'
 import { existsSync, statSync } from 'node:fs'
 import path from 'node:path'
 
+function getOptionValue(args: string[], index: number, option: string): string {
+  const value = args[index + 1]
+  if (!value || value.startsWith('-')) {
+    throw new Error(`选项 ${option} 缺少参数值。`)
+  }
+  return value
+}
+
 /**
  * 解析命令行参数
  */
@@ -26,23 +34,23 @@ export function parseArgs(args: string[]): CliOptions {
     switch (arg) {
       case '-t':
       case '--torrent':
-        options.torrent = args[++i]
+        options.torrent = getOptionValue(args, i++, arg)
         break
       case '-m':
       case '--magnet':
-        options.magnet = args[++i]
+        options.magnet = getOptionValue(args, i++, arg)
         break
       case '-i':
       case '--input':
-        options.input = args[++i]
+        options.input = getOptionValue(args, i++, arg)
         break
       case '-d':
       case '--dir':
-        options.dir = args[++i]
+        options.dir = getOptionValue(args, i++, arg)
         break
       case '-o':
       case '--output':
-        options.output = args[++i]
+        options.output = getOptionValue(args, i++, arg)
         break
       case '-v':
       case '--verbose':
