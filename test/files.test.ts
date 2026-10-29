@@ -64,4 +64,57 @@ describe('executeFileOperations', () => {
     expect(result).toEqual({ successCount: 1, failCount: 0 })
     await expect(fs.readFile(path.join(outputDir, 'Show', 'Season 1', 'episode.mkv'), 'utf8')).resolves.toBe('episode')
   })
+
+  it.each(['parent traversal', 'absolute path'])('rejects a %s in the torrent file path', async (pathType) => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'torrent-restore-files-'))
+    const sourcePath = path.join(tempDir, 'source', 'file.txt')
+    const outputDir = path.join(tempDir, 'output')
+    const torrentPath = pathType === 'parent traversal'
+      ? '../../outside.txt'
+      : path.join(tempDir, 'outside.txt')
+    await fs.mkdir(path.dirname(sourcePath), { recursive: true })
+    await fs.writeFile(sourcePath, 'content')
+
+    const result = await executeFileOperations(
+      [{
+        torrent: { fullPath: torrentPath, name: 'file.txt', size: 7 },
+        local: { fullPath: sourcePath, name: 'file.txt', size: 7 },
+        stage: 1,
+        type: 'unique_exact',
+      }],
+      outputDir,
+      'Show',
+      'copy',
+      false,
+    )
+
+    expect(result).toEqual({ successCount: 0, failCount: 1 })
+    await expect(fs.access(path.resolve(outputDir, 'Show', torrentPath))).rejects.toThrow()
+    await expect(fs.readFile(sourcePath, 'utf8')).resolves.toBe('content')
+  })
+
+  it('rejects a torrent name that escapes the output directory', async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'torrent-restore-files-'))
+    const sourcePath = path.join(tempDir, 'source', 'file.txt')
+    const outputDir = path.join(tempDir, 'output')
+    await fs.mkdir(path.dirname(sourcePath), { recursive: true })
+    await fs.writeFile(sourcePath, 'content')
+
+    const result = await executeFileOperations(
+      [{
+        torrent: { fullPath: 'file.txt', name: 'file.txt', size: 7 },
+        local: { fullPath: sourcePath, name: 'file.txt', size: 7 },
+        stage: 1,
+        type: 'unique_exact',
+      }],
+      outputDir,
+      '../outside',
+      'copy',
+      false,
+    )
+
+    expect(result).toEqual({ successCount: 0, failCount: 1 })
+    await expect(fs.access(path.join(tempDir, 'outside', 'file.txt'))).rejects.toThrow()
+    await expect(fs.readFile(sourcePath, 'utf8')).resolves.toBe('content')
+  })
 })

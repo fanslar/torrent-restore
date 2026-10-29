@@ -9,6 +9,14 @@ import process from 'node:process'
 import chalk from 'chalk'
 import { ensureDir, log } from './utils.js'
 
+function isWithinDirectory(directory: string, candidate: string): boolean {
+  const relativePath = path.relative(directory, candidate)
+  return relativePath !== ''
+    && relativePath !== '..'
+    && !relativePath.startsWith(`..${path.sep}`)
+    && !path.isAbsolute(relativePath)
+}
+
 /**
  * 扫描本地文件
  */
@@ -59,20 +67,28 @@ export async function executeFileOperations(
   let successCount = 0
   let failCount = 0
 
-  const baseDir = singleFileTorrent ? targetRoot : path.join(targetRoot, torrentName)
-
-  if (dryRun) {
-    log(`  模拟: 将处理 ${matched.length} 个文件`, 'verbose', verbose)
-    return { successCount: matched.length, failCount: 0 }
-  }
-
-  // 确保输出目录存在
-  await ensureDir(baseDir)
+  const outputRoot = path.resolve(targetRoot)
+  const baseDir = singleFileTorrent
+    ? outputRoot
+    : path.resolve(outputRoot, torrentName)
+  const baseDirIsSafe = singleFileTorrent || isWithinDirectory(outputRoot, baseDir)
 
   for (const match of matched) {
     const source = match.local.fullPath
-    const targetPath = path.join(baseDir, match.torrent.fullPath)
+    const targetPath = path.resolve(baseDir, match.torrent.fullPath)
     const targetDir = path.dirname(targetPath)
+
+    if (!baseDirIsSafe || !isWithinDirectory(outputRoot, targetPath)) {
+      log(`  ❌ 拒绝写入输出目录之外的路径: ${targetPath}`, 'error', verbose)
+      failCount++
+      continue
+    }
+
+    if (dryRun) {
+      successCount++
+      log(`  模拟: ${source} -> ${targetPath}`, 'verbose', verbose)
+      continue
+    }
 
     try {
       await ensureDir(targetDir)
@@ -93,6 +109,10 @@ export async function executeFileOperations(
     }
   }
 
-  log(`  成功: ${successCount}, 失败: ${failCount}`, 'info')
+  if (dryRun)
+    log(`  模拟完成: ${successCount} 个文件可处理, ${failCount} 个路径被拒绝`, 'info')
+  else
+    log(`  成功: ${successCount}, 失败: ${failCount}`, 'info')
+
   return { successCount, failCount }
 }
