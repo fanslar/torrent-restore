@@ -188,6 +188,7 @@ async function main(): Promise<void> {
       options.move ? 'move' : 'copy',
       options.dryRun,
       options.verbose,
+      torrent.files.length === 1 && torrent.files[0].fullPath === torrent.name,
     )
 
     if (options.verbose)

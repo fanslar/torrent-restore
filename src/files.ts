@@ -52,13 +52,14 @@ export async function executeFileOperations(
   operation: 'copy' | 'move',
   dryRun: boolean,
   verbose: boolean = false,
+  singleFileTorrent: boolean = false,
 ): Promise<{ successCount: number, failCount: number }> {
   log(`📦 ${operation === 'move' ? '移动' : '复制'}文件...`, 'info')
 
   let successCount = 0
   let failCount = 0
 
-  const baseDir = path.join(targetRoot, torrentName)
+  const baseDir = singleFileTorrent ? targetRoot : path.join(targetRoot, torrentName)
 
   if (dryRun) {
     log(`  模拟: 将处理 ${matched.length} 个文件`, 'verbose', verbose)
