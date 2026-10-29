@@ -97,15 +97,9 @@ export class TorrentCache {
     if (!item)
       return null
 
-    try {
-      const cacheFile = path.join(this.cacheDir, `${key}.json`)
-      const data = await readJSONFile<CachedTorrent>(cacheFile)
-      return data
-    }
-    catch {
-      await this.delete(key)
-      return null
-    }
+    const data = await readJSONFile<CachedTorrent>(this.getCacheFilePath(key))
+      ?? await readJSONFile<CachedTorrent>(path.join(this.cacheDir, `${key}.json`))
+    return data
   }
 
   /**
@@ -114,8 +108,7 @@ export class TorrentCache {
   async set(key: string, data: CachedTorrent): Promise<void> {
     await this.init()
 
-    const cacheFile = path.join(this.cacheDir, `${key}.json`)
-    await writeJSONFile(cacheFile, data)
+    await writeJSONFile(this.getCacheFilePath(key), data)
 
     this.meta.items[key] = {
       timestamp: Date.now(),
@@ -131,12 +124,13 @@ export class TorrentCache {
   async delete(key: string): Promise<void> {
     await this.init()
 
-    const cacheFile = path.join(this.cacheDir, `${key}.json`)
-    try {
-      await fs.unlink(cacheFile)
-    }
-    catch {
-      // ignore
+    for (const cacheFile of [this.getCacheFilePath(key), path.join(this.cacheDir, `${key}.json`)]) {
+      try {
+        await fs.unlink(cacheFile)
+      }
+      catch {
+        // ignore
+      }
     }
 
     delete this.meta.items[key]
@@ -184,5 +178,9 @@ export class TorrentCache {
    */
   private async saveMeta(): Promise<void> {
     await writeJSONFile(this.metaFile, this.meta)
+  }
+
+  private getCacheFilePath(key: string): string {
+    return path.join(this.cacheDir, `${encodeURIComponent(key)}.json`)
   }
 }
