@@ -6,8 +6,8 @@
  * 2. 磁力链接 - 优先读取缓存，缓存未命中时通过 qBittorrent Web API 获取元数据
  */
 
-import type { Buffer } from 'node:buffer'
 import type { TorrentInfo } from './types.js'
+import { Buffer } from 'node:buffer'
 import { existsSync, promises as fs, statSync } from 'node:fs'
 import path from 'node:path'
 import bencode from 'bencode'
@@ -82,7 +82,7 @@ async function getTorrentFromFile(filePath: string, verbose: boolean): Promise<T
     if (info.files) {
       // 多文件种子
       for (const file of info.files) {
-        const filePath = file.path.map((p: Buffer) => p.toString('utf8'))
+        const filePath = file.path.map((part: Uint8Array) => Buffer.from(part).toString('utf8'))
         const fileName = filePath[filePath.length - 1]
         files.push({
           fullPath: filePath.join('/'),
@@ -93,7 +93,7 @@ async function getTorrentFromFile(filePath: string, verbose: boolean): Promise<T
     }
     else {
       // 单文件种子
-      const name = info.name.toString('utf8')
+      const name = Buffer.from(info.name).toString('utf8')
       files.push({
         fullPath: name,
         name,
@@ -102,7 +102,7 @@ async function getTorrentFromFile(filePath: string, verbose: boolean): Promise<T
     }
 
     const result: TorrentInfo = {
-      name: info.name.toString('utf8'),
+      name: Buffer.from(info.name).toString('utf8'),
       files,
     }
 
