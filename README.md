@@ -47,11 +47,12 @@ export QBITTORRENT_METADATA_SAVE_PATH="/path/on/qbittorrent/metadata-only"
 
 远程连接必须使用 HTTPS。该临时任务设置了 `MetadataReceived` 停止条件，并在清理时保留文件（不删除保存目录中的内容）；请不要将保存路径指向有重要数据的目录。元数据获取最长等待 120 秒。已有同 hash 任务如果已经有元数据会直接读取且不会修改；若其尚无元数据则会报错并保持原任务不变。
 
-也可以使用 `--input` 让工具自动识别输入类型。它支持 `.torrent` 文件、完整磁力链接，以及 40 位的十六进制 BTIH：
+也可以使用 `--input` 让工具自动识别输入类型。它支持 `.torrent` 文件、完整磁力链接，以及 40 位十六进制或 32 字符 Base32 编码的 BTIH：
 
 ```bash
 torrent-restore --input ./example.torrent
 torrent-restore --input "0123456789abcdef0123456789abcdef01234567"
+torrent-restore --input "AERUKZ4JVPG66AJDIVTYTK6N54ASGRLH"
 ```
 
 默认输出到本地下载目录的上一级目录，目录名使用种子名称。例如：
