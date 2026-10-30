@@ -25,7 +25,7 @@ ${chalk.bold('📦 torrent-restore - 种子文件结构恢复工具')}
 
 ${chalk.yellow('描述:')}
   将百度网盘下载的平铺文件，按种子原始目录结构重新组织。
-  磁力链接元数据获取暂未实现；已有缓存仍可读取。
+  磁力链接缓存未命中时，通过本机或配置的 qBittorrent 获取元数据。
 
 ${chalk.yellow('用法:')}
   torrent-restore -t <种子文件> [选项]
@@ -43,9 +43,15 @@ ${chalk.yellow('可选参数:')}
   -v, --verbose           显示详细输出
   --move                  移动文件 (默认: 复制)
   --dry-run               模拟运行 (默认: 实际执行)
-  --no-cache              忽略已有缓存（磁力链接元数据获取暂未实现）
+  --no-cache              忽略已有缓存；磁力链接仍通过 qBittorrent 获取元数据
   --clear-cache           清空所有缓存
   -h, --help              显示帮助信息
+
+${chalk.yellow('qBittorrent 配置 (磁力链接缓存未命中时需要):')}
+  QBITTORRENT_URL                 Web UI 地址，例如 http://127.0.0.1:8080
+  QBITTORRENT_USERNAME            Web UI 用户名
+  QBITTORRENT_PASSWORD            Web UI 密码
+  QBITTORRENT_METADATA_SAVE_PATH  qBittorrent 主机上的专用临时保存目录
 
 ${chalk.yellow('缓存说明:')}
   已有磁力链接元数据缓存在:

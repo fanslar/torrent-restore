@@ -3,7 +3,7 @@
  *
  * 支持两种输入类型：
  * 1. 种子文件 (.torrent) - 直接读取，无需网络，无需缓存
- * 2. 磁力链接 - 支持读取已有缓存，元数据获取功能待实现
+ * 2. 磁力链接 - 优先读取缓存，缓存未命中时通过 qBittorrent Web API 获取元数据
  */
 
 import type { Buffer } from 'node:buffer'
@@ -13,6 +13,7 @@ import path from 'node:path'
 import bencode from 'bencode'
 import { TorrentCache } from './cache.js'
 import { detectInputType } from './cli.js'
+import { getMagnetInfoFromQbittorrent } from './qbittorrent.js'
 import { log } from './utils.js'
 
 /**
@@ -115,9 +116,7 @@ async function getTorrentFromFile(filePath: string, verbose: boolean): Promise<T
 }
 
 /**
- * 从缓存读取磁力链接元数据
- *
- * 磁力链接元数据的网络获取功能暂未实现。
+ * 读取缓存中的磁力链接元数据；缓存未命中时向 qBittorrent 请求元数据。
  *
  * @param magnetLink - 磁力链接（支持完整格式、简写格式、纯hash）
  * @param useCache - 是否使用缓存
@@ -132,10 +131,13 @@ async function getTorrentFromMagnet(
   log('🧲 解析磁力链接...', 'info')
 
   // 自动补全磁力链接格式
-  let link = magnetLink
-  if (!link.startsWith('magnet:')) {
-    if (link.includes('urn:btih:')) {
-      link = `magnet:?${link}`
+  let link = magnetLink.trim()
+  if (!/^magnet:/i.test(link)) {
+    if (/^urn:btih:/i.test(link)) {
+      link = `magnet:?xt=${link}`
+    }
+    else if (/^(?:\?|&)?xt=urn:btih:/i.test(link)) {
+      link = `magnet:?${link.replace(/^[?&]/, '')}`
     }
     else {
       link = `magnet:?xt=urn:btih:${link}`
@@ -154,17 +156,23 @@ async function getTorrentFromMagnet(
       log('  ✅ 使用缓存 (永久有效)', 'success', verbose)
       return cached.data
     }
-    log('  缓存未命中，磁力链接元数据获取暂未实现', 'verbose', verbose)
-  }
-  else if (!useCache) {
-    log('  缓存已禁用，磁力链接元数据获取暂未实现', 'verbose', verbose)
-  }
-  else if (!cacheKey) {
-    log('  无法生成缓存键，磁力链接元数据获取暂未实现', 'verbose', verbose)
+    log('  缓存未命中，通过 qBittorrent 获取元数据...', 'verbose', verbose)
   }
 
-  // TODO: Select and implement a reliable magnet metadata retrieval strategy.
-  throw new Error('磁力链接元数据获取暂未实现；目前只能读取已有缓存或使用 .torrent 文件')
+  const infoHash = extractInfoHash(link)
+  if (!infoHash) {
+    throw new Error('无法从磁力链接提取有效的 40 位 BTIH；请检查磁力链接格式')
+  }
+
+  const info = await getMagnetInfoFromQbittorrent(link, infoHash)
+  if (useCache && cacheKey) {
+    await cache.set(cacheKey, {
+      data: info,
+      _cachedAt: new Date().toISOString(),
+      _source: 'qBittorrent',
+    })
+  }
+  return info
 }
 
 /**
@@ -187,9 +195,7 @@ export async function getCachedMagnetInfo(magnetLink: string): Promise<TorrentIn
 }
 
 /**
- * 预获取磁力链接元数据（待实现）
- *
- * 用于提前预热缓存，不阻塞主流程
+ * 预获取磁力链接元数据并写入缓存
  *
  * @param magnetLink - 磁力链接
  * @param verbose - 是否显示详细输出
@@ -198,7 +204,7 @@ export async function prefetchMagnetInfo(
   magnetLink: string,
   verbose: boolean = false,
 ): Promise<void> {
-  log(`  磁力链接元数据预获取暂未实现: ${magnetLink}`, 'warn', verbose)
+  await getTorrentFromMagnet(magnetLink, true, verbose)
 }
 
 /**
@@ -235,12 +241,13 @@ export function isTorrentFile(input: string): boolean {
  * 从磁力链接提取 infohash
  */
 export function extractInfoHash(magnetLink: string): string | null {
-  const match = magnetLink.match(/urn:btih:([a-f0-9]{40})/i)
+  const input = magnetLink.trim()
+  const match = input.match(/urn:btih:([a-f0-9]{40})/i)
   if (match) {
     return match[1].toLowerCase()
   }
-  if (/^[a-f0-9]{40}$/i.test(magnetLink)) {
-    return magnetLink.toLowerCase()
+  if (/^[a-f0-9]{40}$/i.test(input)) {
+    return input.toLowerCase()
   }
   return null
 }

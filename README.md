@@ -34,9 +34,20 @@ torrent-restore --torrent ./example.torrent --dir ./downloads
 torrent-restore --magnet "magnet:?xt=urn:btih:..." --dir ./downloads
 ```
 
-磁力链接元数据获取功能暂未实现。若缓存中已有对应元数据，工具仍可读取缓存；缓存未命中或使用 `--no-cache` 时会提示该功能暂不可用。
+磁力链接优先读取缓存；缓存未命中时，工具会通过 qBittorrent Web API 临时添加磁力任务，并在获取元数据后读取文件清单、暂停并移除该任务。qBittorrent 需要在本机或可访问的服务器上运行，并启用 Web UI。
 
-也可以使用 `--input` 让工具自动识别输入类型。它支持 `.torrent` 文件、完整磁力链接，以及 32 位或 40 位的十六进制 hash：
+配置环境变量（保存路径必须是 qBittorrent 所在主机上的目录，建议预先创建一个专用空目录）：
+
+```bash
+export QBITTORRENT_URL="http://127.0.0.1:8080"
+export QBITTORRENT_USERNAME="admin"
+export QBITTORRENT_PASSWORD="your-web-ui-password"
+export QBITTORRENT_METADATA_SAVE_PATH="/path/on/qbittorrent/metadata-only"
+```
+
+远程连接必须使用 HTTPS。该临时任务设置了 `MetadataReceived` 停止条件，并在清理时保留文件（不删除保存目录中的内容）；请不要将保存路径指向有重要数据的目录。元数据获取最长等待 120 秒。已有同 hash 任务如果已经有元数据会直接读取且不会修改；若其尚无元数据则会报错并保持原任务不变。
+
+也可以使用 `--input` 让工具自动识别输入类型。它支持 `.torrent` 文件、完整磁力链接，以及 40 位的十六进制 BTIH：
 
 ```bash
 torrent-restore --input ./example.torrent
@@ -68,7 +79,7 @@ torrent-restore -t ./example.torrent -d ./downloads -o ./organized
 | `-v, --verbose` | 显示详细匹配结果和完整文件树 |
 | `--move` | 移动匹配文件，而不是复制文件 |
 | `--dry-run` | 只模拟操作，不实际复制或移动文件 |
-| `--no-cache` | 忽略已有缓存（磁力链接元数据获取暂未实现） |
+| `--no-cache` | 忽略已有缓存；成功获取的元数据不会写入缓存 |
 | `--clear-cache` | 清空所有已缓存的种子元数据 |
 | `-h, --help` | 显示帮助信息 |
 
@@ -101,13 +112,13 @@ torrent-restore -t ./example.torrent -d ./downloads --move
 
 ## 缓存
 
-磁力链接的元数据会缓存到：
+磁力链接的元数据会缓存在：
 
 ```text
 ~/.cache/torrent-restore/
 ```
 
-磁力链接元数据获取功能暂未实现；已有缓存仍可读取。需要删除全部缓存时使用 `--clear-cache`。
+缓存未命中时需要配置 qBittorrent Web API（见上文）。使用 `--no-cache` 时既不读取也不写入缓存。需要删除全部缓存时使用 `--clear-cache`。
 
 ## 开发
 

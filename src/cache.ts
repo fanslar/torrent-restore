@@ -70,7 +70,7 @@ export class TorrentCache {
    */
   getCacheKey(input: string): string | null {
     // 1. 磁力链接 → 提取 infohash
-    if (input.startsWith('magnet:')) {
+    if (/^magnet:/i.test(input)) {
       const match = input.match(/urn:btih:([a-f0-9]{40})/i)
       if (match) {
         return `magnet:${match[1].toLowerCase()}`
