@@ -8,6 +8,7 @@ import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import chalk from 'chalk'
+import { extractInfoHash } from './infohash.js'
 import { ensureDir, formatSize, readJSONFile, writeJSONFile } from './utils.js'
 
 const CACHE_VERSION = '1'
@@ -69,23 +70,8 @@ export class TorrentCache {
    * 生成缓存键
    */
   getCacheKey(input: string): string | null {
-    // 1. 磁力链接 → 提取 infohash
-    if (/^magnet:/i.test(input)) {
-      const match = input.match(/urn:btih:([a-f0-9]{40})/i)
-      if (match) {
-        return `magnet:${match[1].toLowerCase()}`
-      }
-      // 如果提取失败，不缓存
-      return null
-    }
-
-    // 2. 纯 hash (40位) → 当作磁力链接
-    if (/^[a-f0-9]{40}$/i.test(input)) {
-      return `magnet:${input.toLowerCase()}`
-    }
-
-    // 3. 种子文件或其他 → 不需要缓存
-    return null
+    const infoHash = extractInfoHash(input)
+    return infoHash ? `magnet:${infoHash}` : null
   }
 
   /**

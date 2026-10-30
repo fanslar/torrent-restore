@@ -5,6 +5,7 @@
 import type { CliOptions, InputSource } from './types.js'
 import { existsSync, statSync } from 'node:fs'
 import path from 'node:path'
+import { isInfoHash } from './infohash.js'
 
 function getOptionValue(args: string[], index: number, option: string): string {
   const value = args[index + 1]
@@ -103,17 +104,11 @@ export function getInputSource(options: CliOptions): InputSource | null {
  */
 export function detectInputType(input: string): 'torrent' | 'magnet' {
   // 磁力链接
-  if (input.startsWith('magnet:') || input.includes('urn:btih:')) {
+  if (/^magnet:/i.test(input) || /urn:btih:/i.test(input)) {
     return 'magnet'
   }
 
-  // 纯 hash (40位十六进制)
-  if (/^[a-f0-9]{40}$/i.test(input)) {
-    return 'magnet'
-  }
-
-  // 纯 hash (32位十六进制)
-  if (/^[a-f0-9]{32}$/i.test(input)) {
+  if (isInfoHash(input)) {
     return 'magnet'
   }
 

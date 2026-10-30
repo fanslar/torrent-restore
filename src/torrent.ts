@@ -13,6 +13,7 @@ import path from 'node:path'
 import bencode from 'bencode'
 import { TorrentCache } from './cache.js'
 import { detectInputType } from './cli.js'
+import { extractInfoHash } from './infohash.js'
 import { getMagnetInfoFromQbittorrent } from './qbittorrent.js'
 import { log } from './utils.js'
 
@@ -46,7 +47,7 @@ export async function getTorrentInfo(
     return await getTorrentFromFile(input, verbose)
   }
   else {
-    // 磁力链接：读取已有缓存；未命中时元数据获取暂不可用
+    // 磁力链接：读取缓存；未命中时通过 qBittorrent 获取元数据
     return await getTorrentFromMagnet(input, useCache, verbose)
   }
 }
@@ -211,7 +212,7 @@ export async function prefetchMagnetInfo(
  * 检查输入是否是磁力链接（快捷方法）
  */
 export function isMagnetLink(input: string): boolean {
-  return input.startsWith('magnet:') || /^[a-f0-9]{40}$/i.test(input)
+  return /^magnet:/i.test(input) || extractInfoHash(input) !== null
 }
 
 /**
@@ -237,17 +238,4 @@ export function isTorrentFile(input: string): boolean {
   return false
 }
 
-/**
- * 从磁力链接提取 infohash
- */
-export function extractInfoHash(magnetLink: string): string | null {
-  const input = magnetLink.trim()
-  const match = input.match(/urn:btih:([a-f0-9]{40})/i)
-  if (match) {
-    return match[1].toLowerCase()
-  }
-  if (/^[a-f0-9]{40}$/i.test(input)) {
-    return input.toLowerCase()
-  }
-  return null
-}
+export { extractInfoHash } from './infohash.js'
