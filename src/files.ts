@@ -3,7 +3,7 @@
  */
 
 import type { MatchResult } from './types.js'
-import { promises as fs } from 'node:fs'
+import { constants, promises as fs } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import chalk from 'chalk'
@@ -93,10 +93,19 @@ export async function executeFileOperations(
     try {
       await ensureDir(targetDir)
       if (operation === 'move') {
-        await fs.rename(source, targetPath)
+        try {
+          await fs.link(source, targetPath)
+          await fs.unlink(source)
+        }
+        catch (err) {
+          if ((err as NodeJS.ErrnoException).code !== 'EXDEV')
+            throw err
+          await fs.copyFile(source, targetPath, constants.COPYFILE_EXCL)
+          await fs.unlink(source)
+        }
       }
       else {
-        await fs.copyFile(source, targetPath)
+        await fs.copyFile(source, targetPath, constants.COPYFILE_EXCL)
       }
       successCount++
       if (verbose) {

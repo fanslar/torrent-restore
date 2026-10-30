@@ -65,6 +65,33 @@ describe('executeFileOperations', () => {
     await expect(fs.readFile(path.join(outputDir, 'Show', 'Season 1', 'episode.mkv'), 'utf8')).resolves.toBe('episode')
   })
 
+  it.each(['copy', 'move'] as const)('does not overwrite an existing destination when using %s', async (operation) => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'torrent-restore-files-'))
+    const sourcePath = path.join(tempDir, 'source', 'file.txt')
+    const outputPath = path.join(tempDir, 'output', 'Show', 'file.txt')
+    await fs.mkdir(path.dirname(sourcePath), { recursive: true })
+    await fs.mkdir(path.dirname(outputPath), { recursive: true })
+    await fs.writeFile(sourcePath, 'new content')
+    await fs.writeFile(outputPath, 'existing content')
+
+    const result = await executeFileOperations(
+      [{
+        torrent: { fullPath: 'file.txt', name: 'file.txt', size: 11 },
+        local: { fullPath: sourcePath, name: 'file.txt', size: 11 },
+        stage: 1,
+        type: 'unique_exact',
+      }],
+      path.join(tempDir, 'output'),
+      'Show',
+      operation,
+      false,
+    )
+
+    expect(result).toEqual({ successCount: 0, failCount: 1 })
+    await expect(fs.readFile(outputPath, 'utf8')).resolves.toBe('existing content')
+    await expect(fs.readFile(sourcePath, 'utf8')).resolves.toBe('new content')
+  })
+
   it.each(['parent traversal', 'absolute path'])('rejects a %s in the torrent file path', async (pathType) => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'torrent-restore-files-'))
     const sourcePath = path.join(tempDir, 'source', 'file.txt')

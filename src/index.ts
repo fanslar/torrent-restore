@@ -187,7 +187,7 @@ async function main(): Promise<void> {
     if (options.verbose)
       console.log('')
 
-    await executeFileOperations(
+    const operationResult = await executeFileOperations(
       allMatched,
       outputBase,
       torrent.name,
@@ -196,6 +196,8 @@ async function main(): Promise<void> {
       options.verbose,
       torrent.files.length === 1 && torrent.files[0].fullPath === torrent.name,
     )
+    if (operationResult.failCount > 0)
+      process.exitCode = 1
 
     if (options.verbose)
       console.log('')
