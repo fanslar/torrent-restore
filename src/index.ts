@@ -25,7 +25,7 @@ ${chalk.bold('📦 torrent-restore - 种子文件结构恢复工具')}
 
 ${chalk.yellow('描述:')}
   将百度网盘下载的平铺文件，按种子原始目录结构重新组织。
-  磁力链接元数据会永久缓存，第二次使用无需网络。
+  磁力链接元数据获取暂未实现；已有缓存仍可读取。
 
 ${chalk.yellow('用法:')}
   torrent-restore -t <种子文件> [选项]
@@ -43,12 +43,12 @@ ${chalk.yellow('可选参数:')}
   -v, --verbose           显示详细输出
   --move                  移动文件 (默认: 复制)
   --dry-run               模拟运行 (默认: 实际执行)
-  --no-cache              强制重新获取，忽略缓存
+  --no-cache              忽略已有缓存（磁力链接元数据获取暂未实现）
   --clear-cache           清空所有缓存
   -h, --help              显示帮助信息
 
 ${chalk.yellow('缓存说明:')}
-  磁力链接的元数据一旦获取，会永久缓存在:
+  已有磁力链接元数据缓存在:
   ${chalk.gray('~/.cache/torrent-restore/')}
 
 ${chalk.yellow('示例:')}

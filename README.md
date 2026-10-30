@@ -34,6 +34,8 @@ torrent-restore --torrent ./example.torrent --dir ./downloads
 torrent-restore --magnet "magnet:?xt=urn:btih:..." --dir ./downloads
 ```
 
+磁力链接元数据获取功能暂未实现。若缓存中已有对应元数据，工具仍可读取缓存；缓存未命中或使用 `--no-cache` 时会提示该功能暂不可用。
+
 也可以使用 `--input` 让工具自动识别输入类型。它支持 `.torrent` 文件、完整磁力链接，以及 32 位或 40 位的十六进制 hash：
 
 ```bash
@@ -66,7 +68,7 @@ torrent-restore -t ./example.torrent -d ./downloads -o ./organized
 | `-v, --verbose` | 显示详细匹配结果和完整文件树 |
 | `--move` | 移动匹配文件，而不是复制文件 |
 | `--dry-run` | 只模拟操作，不实际复制或移动文件 |
-| `--no-cache` | 忽略已有缓存并重新获取种子元数据 |
+| `--no-cache` | 忽略已有缓存（磁力链接元数据获取暂未实现） |
 | `--clear-cache` | 清空所有已缓存的种子元数据 |
 | `-h, --help` | 显示帮助信息 |
 
@@ -105,7 +107,7 @@ torrent-restore -t ./example.torrent -d ./downloads --move
 ~/.cache/torrent-restore/
 ```
 
-后续使用相同磁力链接时会优先读取缓存。需要重新获取时使用 `--no-cache`，需要删除全部缓存时使用 `--clear-cache`。
+磁力链接元数据获取功能暂未实现；已有缓存仍可读取。需要删除全部缓存时使用 `--clear-cache`。
 
 ## 开发
 

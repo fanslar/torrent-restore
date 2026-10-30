@@ -3,7 +3,7 @@
  *
  * 支持两种输入类型：
  * 1. 种子文件 (.torrent) - 直接读取，无需网络，无需缓存
- * 2. 磁力链接 - 需要从 DHT 网络获取元数据，使用缓存加速
+ * 2. 磁力链接 - 支持读取已有缓存，元数据获取功能待实现
  */
 
 import type { Buffer } from 'node:buffer'
@@ -11,7 +11,6 @@ import type { TorrentInfo } from './types.js'
 import { existsSync, promises as fs, statSync } from 'node:fs'
 import path from 'node:path'
 import bencode from 'bencode'
-import parseTorrent from 'parse-torrent'
 import { TorrentCache } from './cache.js'
 import { detectInputType } from './cli.js'
 import { log } from './utils.js'
@@ -46,7 +45,7 @@ export async function getTorrentInfo(
     return await getTorrentFromFile(input, verbose)
   }
   else {
-    // 磁力链接：从网络获取，使用缓存
+    // 磁力链接：读取已有缓存；未命中时元数据获取暂不可用
     return await getTorrentFromMagnet(input, useCache, verbose)
   }
 }
@@ -116,10 +115,9 @@ async function getTorrentFromFile(filePath: string, verbose: boolean): Promise<T
 }
 
 /**
- * 从磁力链接获取元数据
+ * 从缓存读取磁力链接元数据
  *
- * 磁力链接只包含 infohash，需要从 DHT 网络获取元数据。
- * 首次获取较慢（秒级），之后使用永久缓存加速。
+ * 磁力链接元数据的网络获取功能暂未实现。
  *
  * @param magnetLink - 磁力链接（支持完整格式、简写格式、纯hash）
  * @param useCache - 是否使用缓存
@@ -156,51 +154,17 @@ async function getTorrentFromMagnet(
       log('  ✅ 使用缓存 (永久有效)', 'success', verbose)
       return cached.data
     }
-    log('  缓存未命中，从网络获取...', 'verbose', verbose)
+    log('  缓存未命中，磁力链接元数据获取暂未实现', 'verbose', verbose)
   }
   else if (!useCache) {
-    log('  缓存已禁用，从网络获取...', 'verbose', verbose)
+    log('  缓存已禁用，磁力链接元数据获取暂未实现', 'verbose', verbose)
   }
   else if (!cacheKey) {
-    log('  无法生成缓存键，从网络获取...', 'verbose', verbose)
+    log('  无法生成缓存键，磁力链接元数据获取暂未实现', 'verbose', verbose)
   }
 
-  // 从 DHT 网络获取元数据 (使用 Promise 方式)
-  try {
-    const torrent = await parseTorrent(link)
-
-    // 检查是否获取到文件列表
-    if (!torrent || !torrent.files || torrent.files.length === 0) {
-      throw new Error('未能获取到文件列表，请检查磁力链接是否有效')
-    }
-
-    const result: TorrentInfo = {
-      name: torrent.name || 'unknown',
-      files: torrent.files.map((f: any) => ({
-        fullPath: f.path.join('/'),
-        name: f.name,
-        size: f.length,
-      })),
-    }
-
-    // 保存到缓存（只有磁力链接且缓存键有效）
-    if (useCache && cacheKey) {
-      await cache.set(cacheKey, {
-        data: result,
-        _cachedAt: new Date().toISOString(),
-        _source: link,
-      })
-      log('  ✅ 已缓存 (永久有效)', 'success', verbose)
-    }
-
-    log(`  找到 ${result.files.length} 个文件`, 'verbose', verbose)
-    return result
-  }
-  catch (err) {
-    const error = err as Error
-    log(`  ❌ 获取失败: ${error.message}`, 'error', verbose)
-    throw new Error(`无法从磁力链接获取元数据: ${error.message}`)
-  }
+  // TODO: Select and implement a reliable magnet metadata retrieval strategy.
+  throw new Error('磁力链接元数据获取暂未实现；目前只能读取已有缓存或使用 .torrent 文件')
 }
 
 /**
@@ -223,7 +187,7 @@ export async function getCachedMagnetInfo(magnetLink: string): Promise<TorrentIn
 }
 
 /**
- * 预获取磁力链接元数据（异步后台任务）
+ * 预获取磁力链接元数据（待实现）
  *
  * 用于提前预热缓存，不阻塞主流程
  *
@@ -234,15 +198,7 @@ export async function prefetchMagnetInfo(
   magnetLink: string,
   verbose: boolean = false,
 ): Promise<void> {
-  try {
-    log('🔄 后台预获取磁力链接元数据...', 'verbose', verbose)
-    await getTorrentFromMagnet(magnetLink, true, verbose)
-    log('  ✅ 预获取完成', 'verbose', verbose)
-  }
-  catch (err) {
-    // 预获取失败不抛出异常，静默失败
-    log(`  ⚠️ 预获取失败: ${(err as Error).message}`, 'warn', verbose)
-  }
+  log(`  磁力链接元数据预获取暂未实现: ${magnetLink}`, 'warn', verbose)
 }
 
 /**
