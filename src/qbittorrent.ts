@@ -301,11 +301,17 @@ async function waitForMetadata(
   tag: string,
 ): Promise<TorrentInfo> {
   const deadline = Date.now() + METADATA_TIMEOUT_MS
+  let taskObserved = false
   while (Date.now() < deadline) {
     const torrents = await getTorrent(config, cookie, hash, deadline)
     const torrent = torrents[0]
-    if (!torrent)
-      throw new Error('qBittorrent removed the metadata task before metadata was available')
+    if (!torrent) {
+      if (taskObserved)
+        throw new Error('qBittorrent removed the metadata task before metadata was available')
+      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
+      continue
+    }
+    taskObserved = true
     if (!hasTag(torrent, tag))
       throw new Error('Temporary qBittorrent task ownership could not be verified')
 

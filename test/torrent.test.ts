@@ -6,6 +6,13 @@ import { TorrentCache } from '../src/cache.js'
 import { getTorrentInfo } from '../src/torrent.js'
 
 const originalCacheHome = process.env.XDG_CACHE_HOME
+const qbittorrentEnv = [
+  'QBITTORRENT_URL',
+  'QBITTORRENT_USERNAME',
+  'QBITTORRENT_PASSWORD',
+  'QBITTORRENT_METADATA_SAVE_PATH',
+] as const
+const originalQbittorrentEnv = Object.fromEntries(qbittorrentEnv.map(key => [key, process.env[key]]))
 let testCacheHome: string | undefined
 
 afterEach(async () => {
@@ -13,6 +20,13 @@ afterEach(async () => {
     delete process.env.XDG_CACHE_HOME
   else
     process.env.XDG_CACHE_HOME = originalCacheHome
+  for (const key of qbittorrentEnv) {
+    const value = originalQbittorrentEnv[key]
+    if (value === undefined)
+      delete process.env[key]
+    else
+      process.env[key] = value
+  }
 
   if (testCacheHome) {
     await fs.rm(testCacheHome, { recursive: true, force: true })
@@ -20,7 +34,7 @@ afterEach(async () => {
   }
 })
 
-describe('magnet metadata retrieval placeholder', () => {
+describe('magnet metadata retrieval', () => {
   it('returns existing cached metadata', async () => {
     testCacheHome = await fs.mkdtemp(path.join(os.tmpdir(), 'torrent-restore-magnet-'))
     process.env.XDG_CACHE_HOME = testCacheHome
@@ -42,11 +56,13 @@ describe('magnet metadata retrieval placeholder', () => {
     await expect(getTorrentInfo(magnet, 'magnet')).resolves.toEqual(data)
   })
 
-  it('reports that retrieval is not implemented when the cache misses', async () => {
+  it('requires qBittorrent configuration when the cache misses', async () => {
     testCacheHome = await fs.mkdtemp(path.join(os.tmpdir(), 'torrent-restore-magnet-'))
     process.env.XDG_CACHE_HOME = testCacheHome
+    for (const key of qbittorrentEnv)
+      delete process.env[key]
 
     const torrentInfo = getTorrentInfo(`magnet:?xt=urn:btih:${'e'.repeat(40)}`, 'magnet')
-    await expect(torrentInfo).rejects.toThrow('磁力链接元数据获取暂未实现')
+    await expect(torrentInfo).rejects.toThrow('qBittorrent metadata retrieval requires')
   })
 })
