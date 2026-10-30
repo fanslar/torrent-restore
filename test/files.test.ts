@@ -120,6 +120,35 @@ describe('executeFileOperations', () => {
     await expect(fs.readFile(sourcePath, 'utf8')).resolves.toBe('content')
   })
 
+  it('rejects a destination directory symlink that escapes the output root', async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'torrent-restore-files-'))
+    const sourcePath = path.join(tempDir, 'source', 'file.txt')
+    const outputDir = path.join(tempDir, 'output')
+    const outsideDir = path.join(tempDir, 'outside')
+    await fs.mkdir(path.dirname(sourcePath), { recursive: true })
+    await fs.mkdir(path.join(outputDir, 'Show'), { recursive: true })
+    await fs.mkdir(outsideDir)
+    await fs.writeFile(sourcePath, 'content')
+    await fs.symlink(outsideDir, path.join(outputDir, 'Show', 'linked'))
+
+    const result = await executeFileOperations(
+      [{
+        torrent: { fullPath: 'linked/file.txt', name: 'file.txt', size: 7 },
+        local: { fullPath: sourcePath, name: 'file.txt', size: 7 },
+        stage: 1,
+        type: 'unique_exact',
+      }],
+      outputDir,
+      'Show',
+      'copy',
+      false,
+    )
+
+    expect(result).toEqual({ successCount: 0, failCount: 1 })
+    await expect(fs.access(path.join(outsideDir, 'file.txt'))).rejects.toThrow()
+    await expect(fs.readFile(sourcePath, 'utf8')).resolves.toBe('content')
+  })
+
   it('rejects a torrent name that escapes the output directory', async () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'torrent-restore-files-'))
     const sourcePath = path.join(tempDir, 'source', 'file.txt')

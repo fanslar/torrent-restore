@@ -17,6 +17,16 @@ function isWithinDirectory(directory: string, candidate: string): boolean {
     && !path.isAbsolute(relativePath)
 }
 
+function isWithinOrEqualDirectory(directory: string, candidate: string): boolean {
+  const relativePath = path.relative(directory, candidate)
+  return relativePath === ''
+    || (
+      relativePath !== '..'
+      && !relativePath.startsWith(`..${path.sep}`)
+      && !path.isAbsolute(relativePath)
+    )
+}
+
 /**
  * 扫描本地文件
  */
@@ -92,6 +102,14 @@ export async function executeFileOperations(
 
     try {
       await ensureDir(targetDir)
+      const [realOutputRoot, realTargetDir] = await Promise.all([
+        fs.realpath(outputRoot),
+        fs.realpath(targetDir),
+      ])
+      if (!isWithinOrEqualDirectory(realOutputRoot, realTargetDir)) {
+        throw new Error(`目标目录通过符号链接逃逸输出目录: ${realTargetDir}`)
+      }
+
       if (operation === 'move') {
         try {
           await fs.link(source, targetPath)
